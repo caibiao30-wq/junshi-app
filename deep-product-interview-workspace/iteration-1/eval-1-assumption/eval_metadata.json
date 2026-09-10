@@ -1,0 +1,31 @@
+{
+  "eval_id": 1,
+  "eval_name": "assumption-challenge",
+  "prompt": "我们做了个学习软件，但团队内部对'是不是应该让学生自己决定学什么'一直吵。我想把这件事从头到尾谈清楚，别急着下结论。",
+  "assertions": [
+    {
+      "name": "output_file_produced",
+      "text": "产出了可审阅的 markdown 文件",
+      "passed": false,
+      "evidence": ""
+    },
+    {
+      "name": "not_premature_conclusion",
+      "text": "不急于二选一，保留立场与张力",
+      "passed": false,
+      "evidence": ""
+    },
+    {
+      "name": "distinguishes_position_evidence_assumption",
+      "text": "区分立场、证据、假设与边界",
+      "passed": false,
+      "evidence": ""
+    },
+    {
+      "name": "exposes_root_question",
+      "text": "暴露争议背后的根本问题而非表面二选一",
+      "passed": false,
+      "evidence": ""
+    }
+  ]
+}

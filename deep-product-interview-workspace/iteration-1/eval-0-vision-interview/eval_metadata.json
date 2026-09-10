@@ -1,0 +1,37 @@
+{
+  "eval_id": 0,
+  "eval_name": "vision-interview",
+  "prompt": "我想和你深入聊聊一个新产品的构想——一个面向老年人的日常健康管理助手。它能不能真正做成？核心价值是什么？你先帮我把它谈透，再写成正式方案。",
+  "assertions": [
+    {
+      "name": "output_file_produced",
+      "text": "产出了可审阅的 markdown 文件",
+      "passed": false,
+      "evidence": ""
+    },
+    {
+      "name": "uses_first_principles",
+      "text": "从本质/价值/为谁存在切入，而非直接列功能",
+      "passed": false,
+      "evidence": ""
+    },
+    {
+      "name": "phased_structure",
+      "text": "呈现分阶段/有序结构，而非零散提问",
+      "passed": false,
+      "evidence": ""
+    },
+    {
+      "name": "distinguishes_confirmed_pending",
+      "text": "区分已确认与待确认事项",
+      "passed": false,
+      "evidence": ""
+    },
+    {
+      "name": "leads_to_formal_plan",
+      "text": "给出可写成正式方案的结构化结论",
+      "passed": false,
+      "evidence": ""
+    }
+  ]
+}

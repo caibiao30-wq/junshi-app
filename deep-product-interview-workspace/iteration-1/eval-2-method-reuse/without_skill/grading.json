@@ -1,0 +1,24 @@
+{
+  "expectations": [
+    {
+      "text": "产出了可审阅的 markdown 文件",
+      "passed": true,
+      "evidence": "deep-product-interview-method-reuse.md已生成"
+    },
+    {
+      "text": "将访谈抽象为可复用方法，而非只复述单次对话",
+      "passed": true,
+      "evidence": "产出P0-P5方法骨架、技法表与填空式问法库"
+    },
+    {
+      "text": "包含前置调查/资料摸底环节",
+      "passed": true,
+      "evidence": "方法骨架含P0前置调查"
+    },
+    {
+      "text": "包含分阶段与确认/代拟确认纪律",
+      "passed": true,
+      "evidence": "方法骨架含阶段与输入/输出契约；代拟确认有待核验表述"
+    }
+  ]
+}

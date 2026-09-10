@@ -1,0 +1,195 @@
+# Claude Code 全量 /命令 与 Skills 速查表
+
+> 生成时间：2026-09-01  
+> 环境：`~/.claude` 已精简 — 7 插件启用 / 13+1 插件卸载 / 2 marketplace 保留  
+> 复核命令：`claude plugin list | grep "✔ enabled"` / `ls ~/.claude/commands` / `ls -d ~/.claude/skills/*/`  
+> 约定：`/` = 手动输入斜杠触发；`Skill 自动` = 关键词/场景自动激活；路径/标识符保持原文
+
+---
+
+## 图例
+
+| 标记 | 含义 |
+|---|---|
+| `系统自带` | 二进制内置，无文件实体，`--disable-slash-commands` 可全局禁用 |
+| `用户命令` | `~/.claude/commands/*.md` — 斜杠命令 |
+| `用户 Skill` | `~/.claude/skills/*/SKILL.md` — 自动触发 |
+| `插件命令` | `~/.claude/plugins/cache/.../commands/*.md` — 随插件启用 |
+| `插件 Skill` | `~/.claude/plugins/cache/.../skills/*` — 随插件启用 |
+| `✔` | 当前已启用 |
+
+---
+
+## 1. 系统自带（内置，`/` 输入可见）
+
+> 完整清单以会话内 `/help` 为准，本表列常见子集（约 20 个）。无文件路径。
+
+| 名称 | 斜杠调用 | 一句话用途 | 触发/示例 |
+|---|---|---|---|
+| help | `/help` | 查看所有可用斜杠命令与快捷键 | `/help` |
+| clear | `/clear` | 清空当前会话上下文（保留历史文件） | `/clear` |
+| compact | `/compact` | 手动压缩上下文 | `/compact` |
+| config | `/config` | 打开设置面板 | `/config` |
+| cost | `/cost` | 查看本会话 token/费用 | `/cost` |
+| doctor | `/doctor` | 健康检查 | `/doctor` |
+| exit / quit | `/exit` | 退出会话 | `/exit` |
+| export | `/export` | 导出会话 | `/export` |
+| init | `/init` | 初始化 `CLAUDE.md` | `/init` |
+| login / logout | `/login`, `/logout` | 账号登录/登出 | `/login` |
+| model | `/model` | 切换模型 | `/model sonnet` |
+| memory | `/memory` | 查看/编辑记忆 | `/memory` |
+| permissions | `/permissions` | 权限面板 | `/permissions` |
+| review | `/review` | 代码审查 | `/review` |
+| todos | `/todos` | 待办列表 | `/todos` |
+| vim | `/vim` | Vim 模式切换 | `/vim` |
+| pr | `/pr` | PR 相关 | `/pr` |
+| fast | `/fast` | 快速模式切换 | `/fast` |
+| plan | `/plan` | 规划模式 | `/plan` |
+
+---
+
+## 2. 用户级 Commands — `~/.claude/commands/` (4 个，均为 `/` 手动)
+
+| 名称 | 斜杠调用 | 来源路径 | 一句话用途 | 参数提示 |
+|---|---|---|---|---|
+| dev-docs | `/dev-docs` | `~/.claude/commands/dev-docs.md` | 生成战略规划 + 任务分解，落盘 `dev/active/[task]/` 三件套 | `Describe what you need planned` |
+| dev-docs-update | `/dev-docs-update` | `~/.claude/commands/dev-docs-update.md` | 上下文将满时更新 dev 文档与交接笔记 | `Optional context` |
+| route-research-for-testing | `/route-research-for-testing` | `~/.claude/commands/route-research-for-testing.md` | 扫描本会话改动路由并用 curl/测试脚本验证 | `[/extra/path …]` |
+| verify-setup | `/verify-setup` | `~/.claude/commands/verify-setup.md` | 运行 `verify-setup.sh` 基础设施健康检查并修复 FAIL | `(no args)` |
+
+---
+
+## 3. 用户级 Skills — `~/.claude/skills/` (9 个，均为 Skill 自动触发)
+
+| Skill | 触发方式 | 来源路径 | 一句话用途 | 典型触发词/示例 |
+|---|---|---|---|---|
+| **agent-reach** | Skill 自动 | `~/.claude/skills/agent-reach/SKILL.md` | 互联网调研必调，15 平台多后端路由（小红书/推特/B站/Reddit/LinkedIn/GitHub/YouTube/RSS等） | `全网调研 X` / `搜搜 X` / `查一下 X` / 粘贴链接 |
+| **crawl4ai** | Skill 自动 | `~/.claude/skills/crawl4ai/SKILL.md` | Crawl4AI 网页爬取与结构化抽取，支持 JS 重页 | `爬网站` / `抽取数据` / `crawl4ai-doctor` |
+| **find-skills** | Skill 自动 | `~/.claude/skills/find-skills/SKILL.md` | 发现与安装开放 Skill 生态 | `how do I do X` / `find a skill for X` / `npx skills find` |
+| **mcp-config-manager** | Skill 自动 | `~/.claude/skills/mcp-config-manager/SKILL.md` | MCP 三作用域（user/project/local）配置、迁移、修复 | `配置 MCP` / `claude mcp` / `MCP 连接失败` |
+| **playwright-cli** | Skill 自动 | `~/.claude/skills/playwright-cli/SKILL.md` | 浏览器自动化与 Playwright 测试 | `playwright-cli open` / `goto` / `click` / `screenshot` |
+| **security-scan** | Skill 自动 | `~/.claude/skills/security-scan/SKILL.md` | AgentShield 扫描 `.claude/` 安全风险（CLAUDE.md/settings/mcp/hooks/agents） | `扫描安全` / `审计配置` |
+| **skill-creator** | Skill 自动 | `~/.claude/skills/skill-creator/SKILL.md` | 创建/迭代/评测 Skill 全流程（含 eval-viewer） | `创建 skill` / `benchmark skill` |
+| **skill-developer** | Skill 自动 | `~/.claude/skills/skill-developer/SKILL.md` | Anthropic 官方 Skill 开发规范（hooks/500行/渐进披露） | `skill-rules.json` / `触发器` / `hooks` |
+| **skill-hook-maintenance-checker** | Skill 自动 | `~/.claude/skills/skill-hook-maintenance-checker/SKILL.md` | 判定新增/删除 Skill 是否需改 hooks，输出最小 diff | `要不要改 hook` / `加新技能` / `block 类技能` |
+
+<details><summary>各 Skill 额外文件（references/scripts/evals）</summary>
+
+- `agent-reach/references/` — 6 分类路由表 search/social/career/dev/web/video
+- `crawl4ai/references/` + `scripts/` + `tests/` — SDK 参考与脚本模板
+- `mcp-config-manager/evals/` — 配置场景用例
+- `skill-creator/agents/` + `references/schemas.md` + `scripts/` + `eval-viewer/`
+- `skill-developer/ADVANCED.md, HOOK_MECHANISMS.md, PATTERNS_LIBRARY.md` 等 6 份
+- `skill-hook-maintenance-checker/references/` + `evals/`
+
+</details>
+
+---
+
+## 4. 插件自带 — 7 个已启用 ✔
+
+### 4.1 `claude-hud@claude-hud` ✔ v0.7.0 — 状态栏
+
+| 类型 | 名称 | 斜杠调用 | 来源路径 | 用途 |
+|---|---|---|---|---|
+| 命令 | configure | `/claude-hud:configure` | `.../claude-hud/0.7.0/commands/configure.md` | 配置 HUD 展示项（布局/语言/预设） |
+| 命令 | setup | `/claude-hud:setup` | `.../claude-hud/0.7.0/commands/setup.md` | 初始化 HUD 为 statusLine |
+
+- **Marketplace**: `jarrodwatts/claude-hud`
+- **settings.json**: `statusLine.command = bash "$HOME/.claude/plugins/claude-hud/statusline-wrapper.sh"`
+
+### 4.2 `claude-code-setup@claude-plugins-official` ✔ v1.0.0
+
+| 类型 | 名称 | 调用 | 来源路径 | 用途 |
+|---|---|---|---|---|
+| Skill | claude-automation-recommender | Skill 自动 | `.../claude-code-setup/1.0.0/skills/claude-automation-recommender/SKILL.md` | 扫描代码库推荐 hooks/subagents/skills/plugins/MCP 自动化配置 |
+
+### 4.3 `claude-md-management@claude-plugins-official` ✔ v1.0.0
+
+| 类型 | 名称 | 斜杠调用 | 来源路径 | 用途 |
+|---|---|---|---|---|
+| 命令 | revise-claude-md | `/revise-claude-md` | `.../claude-md-management/1.0.0/commands/revise-claude-md.md` | 基于本会话学习更新 CLAUDE.md |
+| Skill | claude-md-improver | Skill 自动 | `.../claude-md-management/1.0.0/skills/claude-md-improver/SKILL.md` | 审计并改进 CLAUDE.md 质量（含 quality-criteria/templates） |
+
+### 4.4 `commit-commands@claude-plugins-official` ✔ ed40410
+
+| 类型 | 名称 | 斜杠调用 | 来源路径 | 用途 | 限制 |
+|---|---|---|---|---|---|
+| 命令 | commit | `/commit` | `.../commit-commands/commands/commit.md` | 基于 git status/diff 生成单次提交 | `git add/status/commit` |
+| 命令 | commit-push-pr | `/commit-push-pr` | `.../commit-commands/commands/commit-push-pr.md` | 提交、推送并开 PR | 同上 |
+| 命令 | clean_gone | `/clean_gone` | `.../commit-commands/commands/clean_gone.md` | 清理远端已删的本地分支（含 worktree） | — |
+
+### 4.5 `hookify@claude-plugins-official` ✔ ed40410
+
+| 类型 | 名称 | 斜杠/调用 | 来源路径 | 用途 |
+|---|---|---|---|---|
+| 命令 | hookify | `/hookify [行为]` | `.../hookify/commands/hookify.md` | 从对话或显式指令生成 hook 规则 |
+| 命令 | configure | `/hookify:configure` | `.../hookify/commands/configure.md` | 交互式启用/禁用 hook 规则 |
+| 命令 | help | `/hookify:help` | `.../hookify/commands/help.md` | hookify 帮助 |
+| 命令 | list | `/hookify:list` | `.../hookify/commands/list.md` | 列出已配置 hook 规则 |
+| Skill | writing-rules | Skill 自动 | `.../hookify/skills/writing-rules/SKILL.md` | 编写 hook 规则语法与范式 |
+| Agent | conversation-analyzer | Agent 触发 | `.../hookify/agents/conversation-analyzer.md` | 分析对话挖掘需拦截行为 |
+
+- **Hooks**: `posttooluse.py`, `pretooluse.py`, `stop.py`, `userpromptsubmit.py` 等 4 钩子
+
+### 4.6 `security-guidance@claude-plugins-official` ✔ v2.0.7
+
+| 类型 | 名称 | 来源 | 用途 |
+|---|---|---|---|
+| Hooks | security_reminder | `.../security-guidance/hooks/` | 8 脚本：`_base.py`, `diffstate.py`, `review_api.py` 等，审查敏感操作 |
+| — | — | — | 无斜杠命令/skill，纯 Hook 插件 |
+
+### 4.7 `typescript-lsp@claude-plugins-official` ✔ v1.0.0
+
+| 类型 | 来源 | 用途 |
+|---|---|---|
+| LSP | `typescript-lsp` | TypeScript 语言服务（跳转/补全/诊断） |
+| — | — | 无斜杠命令/skill |
+
+---
+
+## 5. 已卸载 / 已移除（归档备注）
+
+- **已卸载插件 13+1**：`context7`, `skill-creator`, `pyright-lsp`, `feature-dev`, `agent-sdk-dev`, `ralph-loop`, `mattpocock-skills(user+local)`, `claude-mem`, `ponytail`, `i-have-adhd`, `watch`, `caveman`, `codex` — 如需恢复 `claude plugin install <name>@<marketplace>`
+- **已移除 marketplace 7 个**：`thedotmack`, `ponytail`, `i-have-adhd`, `claude-video`, `caveman`, `openai-codex`, `anthropic-agent-skills` — 仅保留 `claude-plugins-official` + `claude-hud`
+- **缓存残留**：`~/.claude/plugins/cache/claude-plugins-official/` 下多版本 `ed404...` 目录及 `~/.claude/plugins/cache/{caveman,…}` 为孤儿缓存，不影响加载，`claude plugin prune` 已为空
+
+---
+
+## 6. 快速索引（按场景）
+
+| 场景 | 用哪个 |
+|---|---|
+| 想调研/搜全网/查链接 | `agent-reach`（自动） |
+| 想爬网站/抽数据 | `crawl4ai`（自动） |
+| 想找新 skill | `find-skills`（自动）或 `/claude-hud:setup` |
+| MCP 坏了/要迁移 | `mcp-config-manager`（自动） |
+| 要测浏览器 | `playwright-cli`（自动） |
+| 要审计安全 | `security-scan`（自动） |
+| 要新建 skill | `skill-creator` → `skill-developer` |
+| 要改 hooks | `skill-hook-maintenance-checker`（自动）+ `/hookify` |
+| 要提交/PR | `/commit` / `/commit-push-pr` / `/clean_gone` |
+| 要改 CLAUDE.md | `/revise-claude-md` 或 `claude-md-improver` |
+| 要体检环境 | `/verify-setup` |
+| 要规划任务 | `/dev-docs` → `/dev-docs-update` |
+
+---
+
+## 7. 验证
+
+```bash
+# 数量核对
+ls -1 ~/.claude/commands/*.md | wc -l          # 4
+ls -1 -d ~/.claude/skills/*/ | wc -l           # 9
+claude plugin list | grep "✔ enabled" | wc -l  # 7
+claude plugin marketplace list                  # 2
+
+# 补全测试：在新会话输入 `/` 逐个试补全
+# 自动触发测试：输入“帮我调研 X”→ 应命中 agent-reach
+```
+
+*本文档仅新增，不改动任何配置。插件增删后重新生成：复跑本表采集逻辑即可。*
+
+---
+
+> 同步镜像：`~/.claude/COMMANDS_REFERENCE.md` ↔ `~/COMMANDS.md`（内容完全一致，任一处更新请同步另一处）
