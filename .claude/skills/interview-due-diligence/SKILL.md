@@ -118,8 +118,8 @@ description: 访谈前置调查取证专用辅技能。当 interview-workflow �
 ## 配套结构导航（渐进披露）
 
 - **主技能引用**：开始调查推理、编排长论证或交接前，读取 [`interview-workflow/references/reasoning-methodology.md`](../interview-workflow/references/reasoning-methodology.md)；只取对应小节，不在本技能复制全文。
-- **scripts/**：`python3 scripts/evidence_gate.py <01_调查取证.md>` —— 检查证据包必备区块、来源定位和待核验清单；不能替代方法学要求的语义与保真审查。
-- **references/**：`due-diligence-guide.md` —— 取证分区、证据等级、冲突处理、外部资料边界及主方法学的落地映射；复杂取证前读取。
+- **scripts/**：`python3 scripts/evidence_gate.py <01_调查取证.md>` —— 检查证据包必备区块、来源定位和待核验清单；不能替代方法学要求的语义与保真审查。`python3 scripts/evidence_scope_gate.py <01_调查取证.md>` —— 校验"调查范围授权"与"来源登记"结构（来源 ID/类型/定位/获取时间/版本/访问状态/材料状态/证据等级、来源区块的权限、失败来源、question_id→evidence_ref），缺必填项输出需人工复核，不代替语义审查。
+- **references/**：`due-diligence-guide.md` —— 取证分区、证据等级、冲突处理、外部资料边界及主方法学的落地映射；复杂取证前读取。`source-schema.md` —— 定义调查范围授权与来源登记的解析结构，是 evidence_scope_gate.py 逐字段校验的权威依据；开始外部取证或登记来源前读取。
 - **assets/templates/**：`01_调查取证.md` —— 新建调查取证汇总文件时复制。
 - **examples/**：`01_调查取证.example.md` —— 对照正确的证据/推断/待核验分层及长论证保真写法；内容为虚构示例。
 
