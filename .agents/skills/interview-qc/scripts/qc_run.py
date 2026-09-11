@@ -46,9 +46,23 @@ STATES = [
     "[确认采纳]",
     "[专业建议·代拟]",
     "[已被修正]",
+    "[拒绝]",
     "[待确认]",
     "[待验证]",
 ]
+# 非法状态冲突（§10/§11）：同一问题单元不得同时含互斥状态。
+# 注意 [专业建议·代拟]+[待确认] 合法（代拟须保持待确认）。
+STATUS_CONFLICTS = (
+    ("用户明确判断", "待确认"),
+    ("用户明确判断", "待验证"),
+    ("确认采纳", "待确认"),
+    ("确认采纳", "待验证"),
+    ("用户明确判断", "专业建议·代拟"),
+    ("专业建议·代拟", "确认采纳"),
+    ("拒绝", "确认采纳"),
+    ("拒绝", "待确认"),
+    ("拒绝", "待验证"),
+)
 ARTIFACTS = ["00_访谈约定.md", "01_调查取证.md", "02_访谈记录.md", "03_访谈报告.md"]
 
 
@@ -98,15 +112,32 @@ def check_evidence(report_text: str, record_file: str) -> list[Finding]:
     return out
 
 
-def check_formal_structure(report_text: str) -> list[Finding]:
-    """结构：核对正式报告的总目录、结论总览、章/节和文末区块。"""
+def _stage_lead(name: str) -> str:
+    """阶段名的首个语义段，用于章节映射的弱匹配（去掉连接词/括号）。"""
+    return re.split(r"[与、和,，:：（）()\s　]+", name.strip())[0]
+
+
+def check_formal_structure(report_text: str, record_text: str) -> list[Finding]:
+    """结构：核对正式报告的总目录、结论总览、章/节和文末区块。
+
+    章=会话实际阶段（见 stage-acceptance.md），不套固定“第一章←阶段0”。据此做章节↔记录实际阶段的弱断言映射。
+    """
     out = []
     if not re.search(r"^#{1,4}\s*[^\n]*(总)?目录", report_text, re.M):
         out.append(Finding("阻塞", "结构", "03_访谈报告.md", "正式报告缺少总目录"))
     if not re.search(r"^#{1,4}\s*[^\n]*结论总览", report_text, re.M):
         out.append(Finding("严重", "结构", "03_访谈报告.md", "正式报告缺少正文前的结论总览"))
-    if not re.search(r"^#\s*第一章[^\n]*阶段\s*0", report_text, re.M):
-        out.append(Finding("严重", "结构", "03_访谈报告.md", "缺少第一章与阶段0的映射声明"))
+    # 弱断言：报告章节与记录实际阶段一一对应（不硬编码“第一章←阶段0”）。
+    stages = re.findall(r"^#{1,4}\s*阶段\s*\d+[：:]\s*(.+?)\s*$", record_text, re.M)
+    if not stages:
+        out.append(Finding("需人工复核", "结构", "02_访谈记录.md→03",
+                           "记录无可解析的实际阶段名——无法核对章节↔阶段映射；请主技能确认报告章节与记录实际阶段一一对应"))
+    else:
+        chapters = re.findall(r"^#{1,4}\s*[^\n]+", report_text, re.M)
+        missing = [s for s in stages if not any(_stage_lead(s) in c for c in chapters)]
+        if missing:
+            out.append(Finding("严重", "结构", "02_访谈记录.md→03",
+                               f"章节↔记录实际阶段弱断言不匹配（未套固定阶段序号）：记录阶段 {', '.join(missing)} 在报告章节中未匹配到映射"))
     if not re.search(r"^#{2,4}\s*[^\n]*问题\s*\d+-\d+", report_text, re.M):
         out.append(Finding("阻塞", "结构", "03_访谈报告.md", "缺少‘节=问题’格式的问题节"))
     if not re.search(r"^#{1,4}\s*[^\n]*结论边界", report_text, re.M):
@@ -114,13 +145,31 @@ def check_formal_structure(report_text: str) -> list[Finding]:
     return out
 
 
+def _state_conflicts(record_text: str) -> list[Finding]:
+    """非法状态冲突阻塞（§10/§11）：同一问题单元不得同时含互斥状态。"""
+    out = []
+    units = re.split(r"^###\s+问题\s+", record_text, flags=re.M)
+    for i, unit in enumerate(units[1:], 1):
+        m = re.search(r"\*\*确认状态\*\*\s*[：:]\s*(.*)", unit)
+        statuses = set(re.findall(r"\[([^\]]+)\]", m.group(1))) if m else set()
+        for a, b in STATUS_CONFLICTS:
+            if a in statuses and b in statuses:
+                out.append(Finding("阻塞", "状态", f"02_访谈记录.md > 问题 {i}",
+                                   f"非法状态冲突 [{a}][{b}]：同一问题不能同时处于互斥状态"))
+    return out
+
+
 def check_state(record_text: str, report_text: str) -> list[Finding]:
-    """状态：待确认/待验证是否被明显升级或抹除。"""
+    """状态：待确认/待验证是否被明显升级或抹除，以及是否存在非法状态冲突。"""
     out = []
     rec_pending = _count(record_text, "[待确认]") + _count(record_text, "[待验证]")
-    rep_pending = _count(report_text, "待确认") + _count(report_text, "待验证")
-    if rep_pending == 0:
+    rep_marker = _count(report_text, "[待确认]") + _count(report_text, "[待验证]")
+    rep_word = _count(report_text, "待确认") + _count(report_text, "待验证")
+    if rep_word == 0:
         out.append(Finding("阻塞", "状态", "03_访谈报告.md", "报告完全未见待确认/待验证标记——请人工核对是否被升级（记录中有保留项时尤其可疑）"))
+    elif rep_marker == 0 and rec_pending > 0:
+        out.append(Finding("阻塞", "状态", "03_访谈报告.md", "报告只见待确认/待验证字样却无状态标记（[待确认]/[待验证]）——疑似仅有无关待确认文字，请核对保留项是否被升级或抹除"))
+    out += _state_conflicts(record_text)
     return out
 
 
@@ -228,7 +277,7 @@ def main() -> int:
 
     # 仅当 02/03 至少其一可读时做内容级检查，避免对空文件堆砌误报
     if rec_text or rep_text:
-        findings += check_formal_structure(rep_text)
+        findings += check_formal_structure(rep_text, rec_text)
         findings += check_evidence(rep_text, str(rec) if rec else "?")
         findings += check_state(rec_text, rep_text)
         findings += check_fidelity(rec_text, rep_text)

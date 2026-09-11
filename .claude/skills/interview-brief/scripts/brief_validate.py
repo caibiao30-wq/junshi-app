@@ -6,7 +6,9 @@
 
 检查:
   1) 六个对齐维度的必填小节都存在
-  2) 门控勾选项全部勾选( [x] )或全部未决被显式列出
+  2) 六大前置要素、对象—用户—问题—约束—目标、调查授权字段齐备
+  3) 非专业用户场景的术语账本关键列存在
+  4) 门控勾选项全部勾选( [x] )或全部未决被显式列出
 非零退出码 = 发现缺项。
 """
 
@@ -25,6 +27,16 @@ REQUIRED = {
     "代拟授权": ["代拟", "授权"],
 }
 
+# 强制性字段集：每个关键词都必须出现（启发式，缺失提示人工复核）
+ALL_REQUIRED = {
+    "六大前置要素": ["核心目标", "边界范围", "执行方法", "实施阶段", "核心方向", "验收标准"],
+    "对象—用户—问题—约束—目标": ["对象", "用户", "问题", "约束", "目标"],
+    "调查授权": ["调查目标", "核心问题", "产出给谁", "时间窗口", "文档版本", "来源类型", "平台", "联网", "排除范围", "失败来源", "验收条件"],
+}
+
+# 术语账本：非专业受访者场景要求登记；至少出现账本表头与一个条目
+TERM_LEDGER_KEYS = ("术语账本", "用户原话", "当前解释", "状态", "定位")
+
 
 def main() -> None:
     ap = argparse.ArgumentParser(description=__doc__)
@@ -38,6 +50,17 @@ def main() -> None:
     for dim, keys in REQUIRED.items():
         if not any(k in text for k in keys):
             problems.append(f"[缺维度] 未找到与「{dim}」相关的内容")
+
+    # 1b) 强制性字段集检查（六大前置要素 / 五元组 / 调查授权，逐项必现）
+    for dim, keys in ALL_REQUIRED.items():
+        missing = [k for k in keys if k not in text]
+        if missing:
+            problems.append(f"[缺字段·{dim}] 未找到: {', '.join(missing)}")
+
+    # 1c) 术语账本检查（非专业受访者场景的硬契约）
+    ledger = [k for k in TERM_LEDGER_KEYS if k in text]
+    if len(ledger) < 3:
+        problems.append("[术语账本] 未登记术语账本（缺表头/原话/解释/状态/定位等关键列）")
 
     # 2) 门控检查
     gates = re.findall(r"\[([ xX])\]\s*(.+)", text)
@@ -56,7 +79,7 @@ def main() -> None:
     if problems:
         print("校验发现问题:", *problems, sep="\n  ")
         sys.exit(1)
-    print(f"校验通过：{len(checked)} 项门控已确认，六维度齐备。")
+    print(f"校验通过：{len(checked)} 项门控已确认；六维度、前置字段集与术语账本齐备。")
 
 
 if __name__ == "__main__":

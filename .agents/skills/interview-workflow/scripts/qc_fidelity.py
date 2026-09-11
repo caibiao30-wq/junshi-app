@@ -9,6 +9,10 @@
   2) 状态: 报告未把待确认/待验证整体抹除（提示人工核对是否被升级）
   3) 回溯: 记录中的"原始定位"行非空
 非零退出码 = 发现问题。
+
+说明: 本脚本与 interview-qc 的 qc_run 在保真/状态/回溯上逻辑相近（有意镜像），
+但分属 interview-workflow / interview-qc 两个独立职责域、各自独立调用。
+为不破坏各自职责与调用契约，保持独立实现、不做跨目录 import 合并（ponytail: 见 §10）。
 """
 
 import argparse
@@ -52,9 +56,10 @@ def main() -> None:
         if r < MIN_KEEP:
             problems.append(f"[压缩] 保留率 {r:.0%} < {MIN_KEEP:.0%}: {p[:36]}…")
 
-    # 状态升级启发式：报告完全没有任何待确认/待验证标记时，提示人工核对。
-    if "待确认" not in report and "待验证" not in report:
-        problems.append("[状态] 报告未见待确认/待验证标记——请人工核对是否被升级")
+    # 状态升级启发式：报告完全没有 [待确认]/[待验证] 状态标记时提示人工核对。
+    # 仅见“待确认/待验证”字样而无状态标记（无关文字）同样不认可（§10）。
+    if "[待确认]" not in report and "[待验证]" not in report:
+        problems.append("[状态] 报告未见 [待确认]/[待验证] 状态标记——请人工核对是否被升级，或仅有无关待确认/待验证文字")
 
     # 回溯检查：记录中"原始定位"行非空非占位。
     for ln in record.splitlines():
