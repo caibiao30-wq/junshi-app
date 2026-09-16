@@ -1,4 +1,14 @@
 {
+  "env": {
+    "OMC_MODEL_HIGH": "kimi-k3",
+    "OMC_MODEL_MEDIUM": "qwen3.8-max-0902",
+    "OMC_MODEL_LOW": "glm-5.3",
+    "OMC_MODEL_ALIAS_OPUS": "kimi-k3",
+    "OMC_MODEL_ALIAS_SONNET": "qwen3.8-max-0902",
+    "OMC_MODEL_ALIAS_HAIKU": "glm-5.3",
+    "OMC_ROUTING_ENABLED": "true",
+    "OMC_ESCALATION_ENABLED": "true"
+  },
   "permissions": {
     "allow": [
       "Bash(npm run lint *)",
@@ -35,9 +45,6 @@
       "Bash(gh pr create *)",
       "Bash(gh pr merge *)"
     ]
-  },
-  "enabledPlugins": {
-    "ponytail@ponytail": true
   },
   "hooks": {
     "SessionStart": [
@@ -77,5 +84,9 @@
         ]
       }
     ]
+  },
+  "enabledPlugins": {
+    "ponytail@ponytail": true,
+    "oh-my-claudecode@omc": true
   }
 }

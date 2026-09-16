@@ -1,0 +1,1327 @@
+
+===PAGE 1===
+From Goals to Aspects, Revisited:
+An NFR Pattern Language for Agentic AI Systems
+Yijun Yu
+The Open University
+Milton Keynes, UK
+yijun.yu@open.ac.uk
+Abstract—Agentic AI systems exhibit numerous crosscut-
+ting concerns—security, observability, cost management, fault
+tolerance—that are poorly modularized in current implemen-
+tations, contributing to the high failure rate of AI projects in
+reaching production. The goals-to-aspects methodology proposed
+at RE 2004 demonstrated that aspects can be systematically
+discovered fromi ∗ goal models by identifying non-functional
+softgoals that crosscut functional goals. This paper revisits
+and extends that methodology to the agentic AI domain. We
+present a pattern language of 12 reusable patterns organized
+across four NFR categories (security, reliability, observability,
+cost management), each mapping ani ∗ goal model to a concrete
+aspect implementation using an AOP framework for Rust.
+Four patterns address agent-specific crosscutting concerns absent
+from traditional AOP literature: tool-scope sandboxing, prompt
+injection detection, token budget management, and action audit
+trails. We extend the V-graph model to capture how agent tasks
+simultaneously contribute to functional goals and non-functional
+softgoals. We validate the pattern language through a case
+study analyzing an open-source autonomous agent framework,
+demonstrating how goal-driven aspect discovery systematically
+identifies and modularizes crosscutting concerns. The pattern
+language offers a principled approach for engineering reliable
+agentic AI systems through early identification of crosscutting
+concerns.
+Index Terms—requirements engineering, aspect-oriented pro-
+gramming, goal modeling,i∗ framework, agentic AI, crosscutting
+concerns, pattern language, non-functional requirements
+I. INTRODUCTION
+Agentic AI systems—autonomous software agents powered
+by large language models (LLMs) that can plan, reason, and
+execute tool-calling workflows—represent one of the most
+rapidly growing areas of software engineering [1]. These
+systems go beyond simple chatbots: they make autonomous
+decisions, invoke external tools (shell commands, file oper-
+ations, web searches), and manage multi-turn conversations
+with minimal human oversight. Industry reports indicate that
+inquiries about multi-agent systems have surged dramatically,
+yet the vast majority of AI projects fail to reach production [2].
+A critical but underexplored contributor to this failure is
+theinadequate engineering of non-functional requirements
+(NFRs). Agentic AI systems exhibit numerous crosscutting
+concerns—security enforcement, observability, cost manage-
+ment, fault tolerance—that pervade every module of the
+system. In current agent frameworks, these concerns are
+implemented in an ad-hoc manner: authorization checks are
+scattered across tool handlers, logging is inconsistently ap-
+plied, rate limiting is duplicated, and cost controls are often
+absent entirely. Thisscatteringandtanglingof crosscutting
+concerns is precisely the problem that aspect-oriented software
+development (AOSD) was designed to solve [3].
+Twenty-two years ago, Yu et al. proposed a systematic
+methodology for discovering aspects fromi ∗ goal models
+at RE 2004 [4]. That work demonstrated that non-functional
+softgoals in goal models naturally crosscut functional goals,
+and that these crosscutting relationships can be systematically
+identified and extracted asaspects. The methodology was il-
+lustrated through a media shop case study, identifying security,
+usability, and portability as crosscutting aspects. Subsequent
+work extended this to the full software lifecycle [5] and
+developed tool support through EA-Miner [6].
+In this paper, we revisit and extend the goals-to-aspects
+methodology to the emerging domain of agentic AI. We argue
+that agent systems present both a compelling new application
+domain for aspect-oriented requirements engineering (AORE)
+and introducenovelcrosscutting concerns—such as prompt
+injection defense, token budget management, and tool-scope
+sandboxing—that are absent from the traditional AOP litera-
+ture. Moreover, theintensityof crosscutting in agent systems
+exceeds that of traditional software: a single agent task like
+“Call LLM Provider” simultaneously touches security, cost,
+reliability, and observability concerns, creating a density of
+overlapping crosscutting that the original V-graph model can
+capture but that existing case studies have not addressed.
+Our contributions are:
+1) Apattern languageof 12 reusable patterns organized
+across four NFR categories, each mapping ani∗ goal model
+to a concrete aspect implementation in Rust. Four patterns
+address agent-specific crosscutting concerns not found in
+traditional AOP.
+2) Anextension of the V-graph model[4] to the agentic
+AI domain, capturing how agent tasks simultaneously con-
+tribute to functional goals (tool execution, LLM interac-
+tion) and non-functional softgoals (safety, cost efficiency,
+compliance).
+3) Acase studyanalyzing an open-source autonomous agent
+framework (192 files, 129,040 LOC), quantifying the
+degree of concern scattering across eleven crosscutting
+concerns (seven established, four newly identified) and
+demonstrating that V-graph analysis identifies both scat-
+tered implementations and missing NFR coverage.
+arXiv:2603.00472v1  [cs.AI]  28 Feb 2026
+===PAGE 2===
+The remainder of this paper is organized as follows. Sec-
+tion II reviews background on goal-oriented RE, AOSD, and
+agentic AI. Section III presents our three-phase methodology.
+Section IV describes the pattern language. Section V presents
+the case study. Section VI discusses implications and threats
+to validity. Section VII surveys related work. Section VIII
+concludes.
+II. BACKGROUND
+A. From Goals to Aspects (RE 2004)
+Yu et al. [4] proposed a methodology for discovering
+aspects from requirements goal models. The key insight is
+that non-functional requirements, modeled assoftgoalsin the
+i∗ framework [7], naturally crosscut functional goals. When a
+softgoal such as “Security” contributes to (or is operationalized
+by) tasks that also serve multiple functional goals, this reveals
+a crosscutting concern that should be modularized as an aspect.
+The methodology introduces theV-graph, a characteristic
+structure in the goal model where:
+•The left vertex represents afunctional goal(e.g., “Process
+Order”);
+•The right vertex represents anNFR softgoal(e.g., “Secu-
+rity”);
+•The bottom vertex representsimplementing tasksthat con-
+tribute to both.
+The V-shape captures the essence of crosscutting: a single
+task serves two distinct concerns, one functional and one
+non-functional. TheAspectFinderalgorithm systematically
+identifies such V-graphs in the goal model and extracts the
+corresponding aspects [4].
+B. Thei ∗ Framework
+Thei ∗ (“i-star”) framework [7], [8] is a goal-oriented
+modeling language for early-phase requirements engineering.
+It models systems as networks ofactorswith intentional
+properties—goals, softgoals, tasks, and resources—connected
+bydependencyrelationships. Two complementary models are
+used:
+•Strategic Dependency (SD): Models dependencies between
+actors.
+•Strategic Rationale (SR): Models internal goal decompo-
+sition within actors through AND/OR refinement, means-
+ends links, and contribution links (positive ++, positive +,
+negative –, negative -) to softgoals.
+C. Aspect-Oriented Programming
+Aspect-oriented programming (AOP) [3], [9] modularizes
+crosscutting concerns intoaspects. An aspect encapsulates
+behavior that cuts across multiple modules, applied at desig-
+natedjoin pointsthroughadvice(before, after, around). While
+AspectJ [3] pioneered AOP for Java, the Rust ecosystem has
+lacked comprehensive AOP support until recently.
+We leverageASPECT-RS[10], an AOP framework for Rust
+that provides: (1) anAspecttrait withbefore,after,
+after_error, andaroundadvice types; (2) compile-
+time weaving via procedural macros (#[aspect(...)]);
+(3) eight production-ready aspects for common crosscutting
+concerns; and (4) near-zero runtime overhead through static
+dispatch. The framework’s key abstraction is:
+1pub traitAspect: Send + Sync {
+2fnbefore(&self, ctx: &JoinPoint) {}
+3fnafter(&self, ctx: &JoinPoint,
+4result: &dynAny) {}
+5fnafter_error(&self, ctx: &JoinPoint,
+6error: &AspectError) {}
+7fnaround(&self, pjp: ProceedingJoinPoint)
+8->Result<Box<dynAny>, AspectError> {
+9pjp.proceed()
+10}
+11}
+D. Agentic AI Systems
+An agentic AI system is an autonomous software agent
+that uses an LLM as its reasoning engine, augmented with
+tool-calling capabilities, memory, and multi-turn conversation
+management [1]. Unlike traditional software, agents make
+autonomous decisionsabout which tools to invoke, what
+information to retrieve, and how to synthesize results—often
+with minimal human oversight.
+Common architectural patterns include ReAct (Reasoning +
+Acting) [11], Reflexion [12], function calling, and multi-agent
+orchestration [13]. Agent frameworks typically provide: LLM
+provider integration (OpenAI, Anthropic, etc.), tool registries
+(shell, file I/O, web search), memory systems (conversation
+history, vector stores), and communication channels.
+The crosscutting concerns in agent systems include but
+extend beyond traditional software: in addition to logging,
+authorization, and caching, agents requireprompt injection
+defense(OW ASP #1 for LLM applications [14]),token budget
+management(controlling LLM API costs),tool-scope sand-
+boxing(containing agent actions within safe boundaries), and
+action audit trails(recording agent decisions for accountabil-
+ity).
+What distinguishes agent systems from traditional software
+is thedensityof crosscutting: a single function call to an LLM
+provider simultaneously involves security (prompt injection
+risk), cost (token consumption), reliability (provider avail-
+ability), observability (decision logging), and safety (output
+validation). This creates a unique engineering challenge where
+multiple NFRs must be enforced at the same join points,
+making aspect-oriented modularization particularly valuable.
+III. METHODOLOGY: GOALS TOASPECTS FORAGENTS
+We extend the RE 2004 goals-to-aspects methodology [4] to
+the agentic AI domain through a three-phase process (Fig. 2).
+A. Phase 1: Agent Goal Modeling
+We construct ani ∗ Strategic Dependency (SD) model
+identifying the key actors in an agentic AI system and their
+dependencies:
+•Agent User: Depends on the agent for task execution,
+information retrieval, and communication.
+•Agent System: The autonomous agent, depending on LLM
+providers for reasoning and tool providers for action execu-
+tion.
+===PAGE 3===
+•LLM Provider: External service providing text generation
+and reasoning capabilities.
+•Tool Provider: Services providing shell execution, file I/O,
+web search, and other capabilities.
+•Operator: Depends on the agent system for security, mon-
+itoring, cost control, and compliance.
+For each actor, we construct a Strategic Rationale (SR)
+model decomposing goals into subgoals and tasks through
+AND/OR refinement. Crucially, we identify bothfunctional
+goals(what the agent does) andNFR softgoals(how well
+it does it), and trace contribution links between tasks and
+softgoals.
+The agent domain introduces characteristic goal decompo-
+sitions not present in traditional software. For example, the
+functional goalExecute ToolAND-decomposes intoParse
+Tool Call,Validate Parameters,Execute Action, andReturn
+Result. Each subtask potentially contributes to multiple NFR
+softgoals:Validate Parameterscontributes positively (++) to
+Security and Safety, whileExecute Actioncontributes nega-
+tively (−−) to Security (risk of unauthorized action) and Cost
+(resource consumption). These multi-directional contribution
+links generate the overlapping V-graphs described in Phase 2.
+B. Phase 2: V-Graph Analysis for Agents
+We extend the V-graph model [4] to define aV-graph for
+Agents:
+Definition 1(V-graph for Agents).A V-graph for agentsV=
+(gf,g nf,T)is a subgraph of thei ∗ SR model consisting of:
+•Afunctional goalg f (e.g., “Execute Tool”);
+•AnNFR softgoalg nf (e.g., “Security [Agent]”);
+•A set ofagent tasksT={t 1,...,t n}that contribute to
+bothg f (via means-ends or task decomposition) andg nf
+(via contribution links).
+Definition 2(Crosscutting Density).For a tasktin the SR
+model, letNFR(t) ={g nf | ∃V= (g f,g nf,T)witht∈
+T}be the set of NFR softgoals thattcontributes to. The
+crosscutting densityoftisδ(t) =|NFR(t)|.
+•δ(t) = 0:thas no NFR impact (pure functional task).
+•δ(t) = 1:tis a single-concern crosscutting point (as in RE
+2004).
+•δ(t)≥2:texhibitsmulti-dimensional crosscutting, requir-
+ingδ(t)aspects composed at the same join point.
+The key distinction from RE 2004 is that agent tasks exhibit
+high crosscutting density. In the original media shop case
+study, tasks typically hadδ≤2. In agent systems, tasks like
+“Call LLM Provider” reachδ= 4or higher, simultaneously
+touching security (prompt injection risk), cost management
+(token consumption), reliability (provider availability), and
+observability (decision logging). This createsoverlapping V-
+graphsthat share the same bottom vertex but connect to
+different NFR softgoals.
+High crosscutting density has a practical consequence: when
+δ(t)≥3, the aspects applied at taskt’s join point must be
+Execute
+Tool
+Security Cost
+Efficiency
+Reliability Observa-
+bility
+Call LLM
+Provider
+means-ends
+−− −−
+− −
+PromptGuard
+TokenBudget
+CircuitBreaker
+AuditTrail
+Fig. 1. Overlapping V-graphs for agents: the “Call LLM” task negatively
+impacts four NFR softgoals (red dashed arrows), each revealing a crosscutting
+concern requiring a mitigating aspect.
+composed, and the composition order matters (e.g., autho-
+rization must precede rate limiting, which must precede cost
+accounting). The pattern composition ordering in Section IV
+directly addresses this challenge.
+TheAspectFinder for Agentsalgorithm extends the original
+AspectFinder [4] as follows:
+1)Enumerate tasks.For each agent tasktin the SR model,
+identify all NFR softgoals{g 1
+nf,...,g k
+nf}thattcontributes
+to via contribution links.
+2)Construct V-graphs.Ifk≥1, each(g f,g i
+nf,t)triple
+forms a V-graph, revealing a potential aspect. The task’s
+crosscutting density isδ(t) =k. Whenδ(t)≥2, the
+task produceskoverlapping V-graphs, requiring composed
+aspects at that join point.
+3)Group by NFR.Group V-graphs by NFR softgoal to
+formaspect candidates. Each group collects all tasks that
+contribute to a given NFR, defining the set of join points
+for that aspect.
+4)Validate via scattering.For each aspect candidate, mea-
+sure the degree of concern scattering in the source code
+(number of modules containing that concern’s implementa-
+tion). A concern scattered acrossm≥3modules confirms
+the V-graph prediction.
+5)Instantiate.For each validated aspect candidate, deter-
+mine: theadvice type(before for precondition checks, after
+for logging, around for interception), thejoin points(which
+functions to advise), and thecomposition orderrelative to
+other aspects.
+Step 4 is our addition to the original algorithm: by ground-
+ing the goal-model analysis in empirical source code measure-
+ment, we strengthen the validation of discovered aspects and
+provide quantitative evidence of crosscutting (Table II).
+C. Phase 3: Pattern Instantiation
+Each validated aspect candidate from Phase 2 is instantiated
+as a pattern in the pattern language. Following the pattern
+format established by Alexander [15] and adapted for software
+by Gamma et al. [16], each pattern provides:
+1)Problem: The crosscutting concern, stated in the agent
+domain context.
+===PAGE 4===
+Phase 1
+Agent Goal
+Modeling
+Phase 2
+V-Graph
+Analysis
+Phase 3
+Pattern
+Instantiation
+SD/SR models
+with actors,
+goals, softgoals
+V-graphs
+identifying
+crosscutting
+Pattern catalog
+withi∗ models
++ Rust aspects
+i∗ framework AspectFinder AOP framework
+Fig. 2. Three-phase methodology for discovering aspects from agent goal
+models.
+TABLE I
+PATTERN LANGUAGE OVERVIEW: 12PATTERNS ACROSS4 NFR
+CATEGORIES. PATTERNS MARKED WITH⋆ARE NOVEL AGENT-SPECIFIC
+CONTRIBUTIONS.
+Category Pattern Advice Source
+Security
+Authorization Guard Before Existing
+Input Validation Around Existing
+Tool Scope Sandbox ⋆ Before Novel
+Prompt Guard ⋆ Before Novel
+Reliability Circuit Breaker Around Existing
+Rate Limiter Around Existing
+Observability
+Structured Logger B/A/AE Existing
+Performance Monitor Around Existing
+Metrics Collector Around Existing
+Action Audit Trail ⋆ B/A/AE Novel
+Cost Mgmt Token Budget⋆ Around Novel
+Response Cache Around Existing
+2)i ∗ Goal Model: The NFR softgoal decomposition showing
+how the concern is operationalized through tasks and
+contribution links.
+3)Solution: The aspect implementation in Rust, specifying
+the advice type (before,after, oraround) and the
+aspect’s internal state management.
+4)Composition: Prerequisite and “composes with” relation-
+ships to other patterns, including the recommended stack-
+ing order.
+The pattern format deliberately bridges two audiences:
+(1) requirements engineers, who work with thei ∗ goal models
+and NFR categories, and (2) developers, who work with
+the Rust aspect implementations. Thei ∗ model provides the
+“why” (which NFR is addressed and how it decomposes),
+while the aspect code provides the “how” (concrete, reusable
+implementation).
+IV. PATTERNLANGUAGE
+We present 12 patterns organized across four NFR cat-
+egories (Table I). Due to space constraints, we detail four
+representative patterns—one per category, prioritizing the four
+novel agent-specific patterns—and summarize the remaining
+eight.
+A. Pattern Format
+Each pattern is presented with: (1)Problem—the crosscut-
+ting concern; (2)i∗ Goal Model—the softgoal decomposition;
+(3)Solution—the aspect implementation; (4)Composition—
+relationships with other patterns.
+B. Tool Scope Sandbox (Security, Novel)
+Problem.Autonomous agents with tool-calling capabilities
+can access files, execute commands, and interact with exter-
+nal services. Without containment, agents may access unau-
+thorized resources—accidentally or through prompt injection
+attacks.
+i∗ Goal Model.The NFR softgoalContain Agent Ac-
+tions [Agent System]decomposes into three subgoals:Enforce
+Filesystem Boundaries(tasks: define allowed paths, resolve
+and check paths),Filter Executable Commands(tasks: define
+command allowlist, parse and match), andRestrict Network
+Access(tasks: define allowed domains, validate URLs). Con-
+tribution links:++Security,++Safety,−Capability.
+Solution.The TOOLSCOPEASPECTintercepts tool execu-
+tion withbeforeadvice, checking the requested operation
+against configured scope boundaries:
+1structToolScopeAspect {
+2allowed_paths: Vec<PathBuf>,
+3command_allowlist: HashSet<String>,
+4allowed_domains: Vec<String>,
+5}
+6implAspectforToolScopeAspect {
+7fnbefore(&self, ctx: &JoinPoint) {
+8// Check tool call against scope
+9// Reject if out of bounds
+10}
+11}
+12#[aspect(ToolScopeAspect::new(config))]
+13fnexecute_shell(cmd: &str) ->Result<Output> {
+14Command::new("sh").arg("-c").arg(cmd).output()
+15}
+Composition.Prerequisite: AUTHORIZATIONGUARD(au-
+thenticate before scoping). Composes with: ACTIONAUDIT-
+TRAIL(log scope violations), PROMPTGUARD(defense in
+depth).
+C. Token Budget Manager (Cost, Novel)
+Problem.LLM-based agents consume tokens that incur
+monetary costs. Agent reasoning loops, tool call chains, and
+retries can lead to runaway costs without budget enforcement.
+i∗ Goal Model.The softgoalCost Efficiency [Agent System]
+decomposes into:Control Token Usage(tasks: track tokens
+per call, maintain running total, enforce limits),Alert on
+Anomalies(tasks: warn at threshold, reject above limit), and
+Enable Cost Reporting(tasks: aggregate per session, export
+for billing). Contribution links:++Sustainability,++Pre-
+dictability,−Capability.
+Solution.The TOKENBUDGETASPECTusesaroundad-
+vice to check remaining budget before each LLM call and
+record usage after:
+1implAspectforTokenBudgetAspect {
+2fnaround(&self, pjp: ProceedingJoinPoint)
+3->Result<Box<dynAny>, AspectError> {
+4letbudget =self.budget.lock();
+5ifbudget.used >= budget.max {
+6return Err(AspectError::execution(
+7"Token budget exceeded"));
+8}
+9drop(budget);
+10letresult = pjp.proceed();
+===PAGE 5===
+11// Record token usage from response
+12result
+13}
+14}
+Composition.Prerequisite: METRICSCOLLECTOR(token
+counting feeds metrics). Composes with: RATELIMITER(dual
+cost and rate controls), RESPONSECACHE(caching reduces
+token usage).
+D. Action Audit Trail (Observability, Novel)
+Problem.Autonomous agents make decisions and take ac-
+tions that affect real systems. For compliance, debugging, and
+trust, every action must be recorded with full provenance—not
+justwhathappened, butwhythe agent decided to act.
+i∗ Goal Model.The softgoalAccountability [Agent System]
+decomposes into:Record All Actions(tasks: log tool calls with
+parameters, log LLM decisions),Preserve Provenance(tasks:
+link actions to triggering request, record reasoning chain,
+timestamp entries), andSupport Compliance Review(tasks:
+enable audit queries, detect policy violations). Contribution
+links:++Trust,++Compliance,−Performance.
+Solution.The AUDITTRAILASPECTusesbefore,
+after, andafter_erroradvice to record structured
+audit entries:
+1implAspectforAuditTrailAspect {
+2fnbefore(&self, ctx: &JoinPoint) {
+3self.store.record(AuditEntry {
+4timestamp: Utc::now(),
+5session:self.session_id.clone(),
+6action: ctx.function_name.into(),
+7phase: Phase::Before,
+8});
+9}
+10fnafter_error(&self, ctx: &JoinPoint,
+11err: &AspectError) {
+12self.store.record(AuditEntry {
+13action: ctx.function_name.into(),
+14phase: Phase::Error,
+15details: format!("{:?}", err),
+16..Default::default()
+17});
+18}
+19}
+Composition.Requires: STRUCTUREDLOGGER(founda-
+tion). Composes with: AUTHORIZATIONGUARD(log who
+accessed what).
+E. Prompt Guard (Security, Novel)
+Problem.LLM-based agents are vulnerable to prompt in-
+jection attacks—the #1 vulnerability in the OW ASP Top 10 for
+LLM Applications [14]—where malicious inputs manipulate
+the agent’s behavior.
+i∗ Goal Model.The softgoalResist Manipulation [Agent
+System]decomposes into:Detect Injection Patterns(tasks:
+pattern-match known templates, detect role/system prompt
+overrides, flag encoding obfuscation),Respond to Detection
+(tasks: log attempt, reject or sanitize, alert operator). Contri-
+bution links:++Security,−Usability (false positive risk).
+Solution.The PROMPTGUARDASPECTusesbeforead-
+vice to scan inputs against configurable injection patterns
+before LLM calls.
+Composition.Composes with: INPUTVALIDATION(layered
+defense), AUDITTRAIL(log attempts), TOOLSCOPESAND-
+BOX(defense in depth).
+F . Existing Patterns (Summary)
+The remaining eight patterns adapt well-known crosscutting
+concerns to the agent domain. While individually familiar
+from traditional AOP, their agent-specifici ∗ goal models
+and composition relationships with the four novel patterns
+constitute part of our contribution.
+Table I summarizes all eight: AUTHORIZATIONGUARD
+(RBAC viabeforeadvice), INPUTVALIDATION(compos-
+able parameter checking viaaround), CIRCUITBREAKER
+(three-state fault tolerance for LLM providers), RATELIM-
+ITER(token bucket with per-function or global limiting),
+STRUCTUREDLOGGER(entry/exit/error tracking), PERFOR-
+MANCEMONITOR(execution time statistics), METRICSCOL-
+LECTOR(counters and histograms feeding SLA monitoring),
+and RESPONSECACHE(memoization with TTL, reducing to-
+ken costs). Each adapts a well-known concern to agent-specific
+join points—e.g., the circuit breaker prevents wasting tokens
+on a degraded LLM provider, and rate limiting applies to both
+outbound API calls and inbound gateway requests.
+G. Pattern Composition
+Patterns compose through aspect stacking. The recom-
+mended composition order for a production agent is:
+1#[aspect(AuthorizationGuard::require_role("op"))]
+2#[aspect(RateLimitAspect::new(100, 60s))]
+3#[aspect(LoggingAspect::new())]
+4#[aspect(AuditTrailAspect::new(store))]
+5fncall_llm(prompt: &str) ->Result<Response> {
+6provider.complete(prompt).await
+7}
+The full ordering is: authenticate→scope→guard→
+throttle→budget→protect→observe→audit (four an-
+notations shown above for brevity; all eight from Table I may
+be composed). Security-first design dictates that identity ver-
+ification and scope enforcement precede resource-consuming
+operations, which precede observability.
+Figure 3 shows the composition and prerequisite relation-
+ships between patterns. Solid arrows indicate prerequisite
+relationships (the source pattern should execute before the
+target), and dashed arrows indicate “composes well with”
+relationships.
+V. CASESTUDY: ZEROCLAW
+We validate the pattern language by analyzing an open-
+source autonomous agent framework written in Rust.
+A. Subject System
+ZEROCLAW[17] is an open-source autonomous AI agent
+framework written in Rust, comprising 192 source files
+(129,040 LOC) organized into 29 module directories. We
+selected this framework because it is representative of mod-
+ern agent architectures while being large enough to exhibit
+meaningful crosscutting. Its key architectural characteristics
+include:
+===PAGE 6===
+Security
+Auth Guard
+Tool Scope⋆
+Validation
+Prompt Guard⋆
+Reliability
+Circuit Brkr
+Rate Limiter
+Observability
+Logger
+Audit Trail⋆
+Perf Monitor
+Metrics
+Cost
+Token Budget⋆
+Resp Cache
+Fig. 3. Pattern relationships: solid arrows show prerequisites, dashed arrows
+show composition relationships. Patterns marked⋆are novel.
+39K
+86K
+129K
+136K
+v1 (Feb 16) v2 (Feb 18) v3 (Feb 21) v4 (Feb 23)
+LOC (thousands)
+0
+50K
+100K
+GitHub Stars
+0
+5K
+10K
+15K
+18K
+LOC
+Stars
+Fig. 4. ZeroClaw codebase growth (LOC, bars) and community adoption
+(GitHub stars, line) across four analysis snapshots. The framework grew 3.4×
+in seven days while accumulating 18,000 GitHub stars, indicating that the
+crosscutting concerns identified here affect a rapidly growing, widely-adopted
+system.
+•LLM integration: Support for 22+ LLM providers (An-
+thropic, OpenAI, Gemini, Ollama, OpenRouter, and com-
+patible APIs) with reliable routing across providers.
+•Tool capabilities: 35 tool implementations including shell
+execution, file read/write, browser control, screenshots,
+memory operations, web search, hardware memory map-
+ping, and agent delegation.
+•Security: Gateway pairing with pairing codes, filesystem
+scoping with allowed paths, command allowlists, authenti-
+cation subsystem, and rate limiting through a security policy
+engine.
+•Memory: Persistent memory subsystem with SQLite stor-
+age, markdown processing, embeddings, vector similarity
+search, RAG, and memory hygiene maintenance.
+•Communication: 23 channel integrations (Discord, Slack,
+Telegram, IRC, Matrix, WhatsApp, iMessage, email,
+DingTalk, Lark, Mattermost, QQ, Signal, ClawdTalk, and
+others).
+•Infrastructure: Daemon supervisor with restart back-
+off, cron scheduler, tunnel providers (ngrok, Cloud-
+flare, Tailscale), health checks, peripheral device support,
+cost tracking, an HTTP/SSE/WebSocket gateway, and a
+hook/event dispatch system.
+This architectural breadth means that crosscutting concerns
+manifest across diverse module boundaries—from tool han-
+Agent
+User
+Agent
+System
+LLM
+Provider
+Tool
+ProviderOperator
+task execution
+reasoning
+tool execsecurity,
+monitoring
+Fig. 5. Strategic Dependency model for ZEROCLAWwith five actors and
+their goal dependencies.
+dlers to channel integrations to provider backends—providing
+a rich testbed for aspect analysis.
+B. Goal Modeling Results
+We constructed ani ∗ SD model for ZEROCLAWwith the
+five actors described in Section III-A (Fig. 5). From this, we
+constructed a Strategic Rationale (SR) model for the Agent
+System actor (Fig. 6), identifying 8 functional goals, 4 NFR
+softgoals, and the tasks connecting them. Figure 6 highlights
+the two highest-density tasks:Call LLM Provider(δ= 4) and
+Execute Shell(δ= 3).
+C. Crosscutting Concern Discovery
+Applying V-graph analysis to the SR model, we identi-
+fied 28 V-graphs revealing crosscutting concerns across 4
+NFR categories. Notably, agent-specific tasks such as “Call
+LLM Provider” and “Execute Shell Command” each partic-
+ipate in 4+ V-graphs simultaneously—exhibiting the multi-
+dimensional crosscutting described in Section III-B.
+Scattering analysis.To ground the V-graph analysis in
+empirical evidence, we measured the degree of crosscutting by
+counting the number of source files (out of 200 total, spanning
+29 module directories across 135,651 lines of Rust code) in
+which each concern’s implementation is scattered (Table II).
+Scattering is measured by searching for concern-specific API
+patterns: security checks (allowed,forbidden,deny,
+pairing,secret,auth), logging (tracing::,info!,
+warn!,error!), etc.
+Five findings are particularly noteworthy. First,rate
+limitinghas three independent implementations: a
+security policyActionTracker, a gateway-specific
+SlidingWindowRateLimiter, and ad-hoc inline checks
+in tool handlers—each with different error formats and
+return types. This is a textbook example of a scattered
+crosscutting concern; the pattern is unchanged across all
+four versions despite significant codebase growth. Second,
+path validationto prevent workspace-escape attacks is
+implemented in three structurally different ways (async
+vs. synchronous canonicalization, delegated vs. inline
+checking,ToolResultvs.anyhow::bail!error
+handling), creating a risk surface where a fix to one site
+may not propagate to others. Third, the framework defines
+===PAGE 7===
+Execute
+Shell
+Read/Write
+Files
+Interact
+with LLM
+Handle
+Channels
+Manage
+Memory
+Execute
+Shell Cmd
+Validate
+Path
+Call LLM
+Provider
+Route
+Message
+Store/
+Retrieve
+Security Reliability Observa-
+bility
+Cost
+Efficiency
+−−
+−
+−++
+−−
+− −
+−−− − −
+δ= 3 δ= 4
+Legend:
+Goal
+Softgoal
+Task
+decomp.
+negative
+positive
+Fig. 6. Partiali ∗ Strategic Rationale model for the Agent System actor, showing 5 functional goals, 5 tasks, and 4 NFR softgoals. Red dashed arrows indicate
+negative contributions (the task hurts the softgoal); blue dashed arrows indicate positive contributions (the task helps). Tasks with high crosscutting density
+(δ≥3) are highlighted. “Call LLM Provider” (δ= 4) requires four composed aspects.
+TABLE II
+CROSSCUTTING CONCERN SCATTERING INZEROCLAW(V4):FILES AND
+MODULES CONTAINING EACH CONCERN(OUT OF200FILES ACROSS29
+MODULES).
+Concern Files Modules Pattern
+Established concerns
+Error handling 161 (81%) 27 Circ. Breaker
+Configuration 128 (64%) 27 —
+Security/auth 104 (52%) 23 Auth. Guard
+Logging 68 (34%) 19 Struct. Logger
+Path validation 68 (34%) 20 Tool Scope
+Retry/resilience 57 (29%) 16 Circ. Breaker
+Rate limiting 29 (15%) 8 Rate Limiter
+Newly identified in v3, confirmed in v4
+Cost tracking 42 (21%) 14 Token Budget
+Hook/dispatch 37 (19%) 13 —
+Telemetry/metrics 21 (11%) 7 Perf. Monitor
+Approval/HITL 17 (9%) 9 Action Audit
+Error handling
+Configuration
+Security/auth
+Logging
+Path validation
+Retry/resilience
+Cost tracking∗
+Hook/dispatch∗
+Rate limiting
+Telemetry∗
+Approval/HITL∗
+81%
+64%
+52%
+34%
+34%
+29%
+21%
+19%
+15%
+11%
+9%
+% files0 25 50 75
+established
+new in v3/v4
+Fig. 7. Crosscutting concern scattering in ZEROCLAW(v4, 200 files). Blue:
+established concerns; orange (∗): newly identified in v3, confirmed in v4.
+anObservertrait for structured event reporting (9 files,
+2,364 LOC), yet 68 files across 19 modules bypass it with
+directtracing::calls—demonstrating that even when
+TABLE III
+SCATTERING STABILITY ACROSS FOUR CODEBASE VERSIONS(120%
+TOTAL FILE GROWTH). CONFIGURATION PLATEAUED AFTER RAPID
+GROWTH;SECURITY/AUTH ROSE WITH V4HARDENING.
+Concern v1 v2 v3 v4∆
+(91) (161) (192) (200) v1→v4
+Error handling 79% 81% 81% 81%+2pp
+Configuration 50% 57% 64% 64%+14pp
+Security/auth 51% 42% 50% 52%+1pp
+Logging 37% 32% 34% 34%−3pp
+Retry/resilience 30% 29% 29% 29%−1pp
+Path validation 31% 29% 34% 34%+3pp
+Rate limiting 15% 16% 15% 15%≈0pp
+a modularization exists, the lack of enforcement leads to
+scattering. Fourth, v3 introduced a dedicatedhooksmodule
+(5 files) as a native event-dispatch mechanism, making it
+the closest architectural analogue to AOP join points in the
+codebase; in v4, 32 of 37 files referencing hook/dispatch
+patterns still lie outside the module, showing the concern
+remains mid-migration. Fifth,approval/human-in-the-loop
+exhibits the worst centralization ratio in the codebase: a
+dedicatedapproval/module exists but contains only 1
+of 17 files referencing the concept, with 6 scattered across
+tool handlers, 2 in the security module, and 2 in channel
+code—unchanged across v3 and v4, confirming this is a
+structurally persistent gap.
+Evolution analysis.We analyzed four versions of ZE-
+ROCLAW(91 files→161 files→192 files→200 files,
+120% total growth) to examine how scattering evolves as the
+codebase grows.
+Table III shows that most scattering ratios are remarkably
+stable across four versions: error handling holds at≈81%,
+retry/resilience at≈29%, and rate limiting at≈15%, confirm-
+ing these are structural characteristics of the architecture rather
+than accidental artifacts of a particular version.Configuration
+plateaued at 64% in v3/v4 after growing sharply from 50%
+in v1; examination of v3’sconfig/traits.rsreveals a
+planned decoupling abstraction that has not yet been adopted
+by consumer modules.Security/authrose from 50% to 52%
+in v4 as thesecurity/module expanded from 11 to 16
+===PAGE 8===
+TABLE IV
+NFRCOVERAGE:MAPPING CONCERNS INZEROCLAW TO PATTERNS.
+CONCERNS MARKED WITH†HAVE NO EXISTING MODULAR
+IMPLEMENTATION.
+NFR Patterns Applied Concerns
+Security Auth. Guard, Validation,
+Tool Scope ⋆, Prompt
+Guard⋆
+2 scattered + 2 absent†
+Reliability Circuit Breaker, Rate
+Limiter
+2 scattered
+Observ. Logger, Perf. Monitor,
+Metrics, Audit Trail ⋆
+1 partial + 3 absent†
+Cost Token Budget ⋆, Resp.
+Cache
+2 absent†
+files with new prompt injection defenses—demonstrating that
+active hardening effort does not reduce scattering but increases
+absolute file coverage. All new modules in v2–v4 exhibit in-
+herited crosscutting patterns rather than centralizing concerns.
+This stability implies that crosscutting concern LOC grows
+proportionallywith codebase size—aspect-oriented modular-
+ization would break this inheritance, as new modules need
+only aspect annotations rather than copied concern code.
+D. Pattern Application
+We applied the pattern language to ZEROCLAWby mapping
+each discovered crosscutting concern to patterns from our
+catalog. Table IV shows the results. All 12 patterns in the
+catalog are applicable: the four novel agent-specific patterns
+(TOOLSCOPESANDBOX, PROMPTGUARD, TOKENBUDGET,
+ACTIONAUDITTRAIL) address concerns that currently lack
+any modular implementation in the framework.
+For the scattered concerns (security, logging, rate limiting,
+retry/resilience, path validation), an aspect-oriented refactoring
+would consolidate the duplicated implementations into sin-
+gle aspects applied at join points. For the absent concerns
+(prompt injection defense, token budget management, action
+audit trails), the pattern language provides ready-to-use aspect
+designs.
+To illustrate the concrete impact, we built a compilable
+proof-of-concept that faithfully reconstructs ZEROCLAW’s
+scattered rate-limiting code across 8 tool functions, then
+refactors it using realASPECT-RSaspects (all tests pass). The
+current implementation requires developers to manually insert
+rate-limit checks at each call site with inconsistent APIs:
+1// Current: 3 independent implementations
+2// tools/shell.rs -- ActionTracker (sliding window)
+3iftracker.is_rate_limited() {
+4returnToolResult { success:false, .. }
+5}
+6tracker.record_action();
+7// gateway/mod.rs -- SlidingWindowRateLimiter
+8if!limiter.allow_pair(key) {return Err(..); }
+9// cron/scheduler.rs -- yet another format
+10iftracker.is_rate_limited() {
+11return(false, "rate limit exceeded".into())
+12}
+With aspect-oriented modularization, all 8 tool functions
+become:
+TABLE V
+BEFORE/AFTER METRICS FOR RATE-LIMITING REFACTORING
+(PROOF-OF-CONCEPT WITH8TOOL FUNCTIONS).
+Metric Before After
+Concern-specific LOC∼195 8
+Independent implementations 3 1
+Algorithms used 2 1
+Error format variants 3 1
+Functions with inline checks 8 0 †
+† Concern is encapsulated in the aspect; functions contain only annotations.
+1// Refactored: 1 aspect, 8 join points
+2#[aspect(RateLimitAspect::new(100, 3600s))]
+3fnexecute_shell(cmd: &str) ->Result<..> { .. }
+4#[aspect(RateLimitAspect::new(100, 3600s))]
+5fnread_file(path: &str) ->Result<..> { .. }
+6// ... 4 more tool functions with same pattern
+7#[aspect(RateLimitAspect::new(10, 60s))]
+8fnhandle_gateway(key: &str) ->Result<..> { .. }
+9#[aspect(RateLimitAspect::new(30, 3600s))]
+10fnrun_scheduled(name: &str) ->Result<..> { .. }
+Table V quantifies the improvement. The
+refactoring eliminates approximately 195 lines of
+scattered, inconsistent rate-limiting code (including
+ActionTracker,SlidingWindowRateLimiter,
+GatewayRateLimiterstructs and inline checks across
+8 functions), replacing them with 8 declarative aspect
+annotations reusing the existing RATELIMITERaspect.
+Extrapolating from the rate-limiting PoC (∼195 LOC scat-
+tered→8 LOC annotations, 96% reduction), we estimate that
+aspect-oriented modularization of all seven measured concerns
+would eliminate approximately 2,100–2,700 LOC of scattered
+concern-specific code across the 200-file codebase (extrapo-
+lated from the rate-limiting PoC ratio; the v3→v4 growth
+from 192 to 200 files added proportionally more scattered
+concern LOC, consistent with the evolution data in Table III).
+Importantly, the evolution data (Table III) shows that un-
+der continued growth, scattered LOC grows proportionally
+with codebase size, while aspect-oriented LOC remains near-
+constant (aspect definitions areO(1); join point annotations
+areO(n)at∼1 LOC each).
+Similarly, path validation—which prevents workspace-
+escape attacks—is currently implemented in three
+divergent ways in ZEROCLAW. The file-read
+handler uses async canonicalization and delegates to
+security.is_resolved_path_allowed(); the
+file-write handler canonicalizes theparentdirectory
+after creation; and the skills module uses synchronous
+canonicalize()with directstarts_with()
+checking andanyhow::bail!for errors. The
+TOOLSCOPESANDBOXpattern would replace all three with
+a uniformbeforeadvice that applies the same validation
+strategy at every tool execution join point, eliminating the
+risk surface created by inconsistent implementations.
+===PAGE 9===
+TABLE VI
+V-GRAPH ANALYSIS RESULTS FORZEROCLAW. EACH ROW MAPS A
+V-GRAPH(g f,g nf,T)TO EMPIRICALLY OBSERVED SCATTERING.
+“ABSENT”INDICATES A CONCERN IDENTIFIED BYV-GRAPH ANALYSIS
+THAT HAS NO IMPLEMENTATION IN THE FRAMEWORK.
+Func. Goal NFR Task(s) Scattering
+Exec Tool Security Check auth, validate
+path
+104 files (52%)
+Exec Tool Safety Scope filesystem 68 files (34%)
+Call LLM Reliability Retry on failure 57 files (29%)
+Serve Req. Perf. Rate limit 29 files (15%)
+Handle Ch. Observ. Log events 68 files (34%)
+Exec Tool Cost Track tokens 42 files (21%)
+Exec Tool Observ. Audit actions Absent †
+Call LLM Security Guard prompt Absent †
+† Concern identified by V-graph analysis but absent from implementation.
+E. Discussion of Results
+The scattering analysis confirms that ZEROCLAW, despite
+being a well-structured Rust codebase organized into 29
+modules, exhibits significant crosscutting: every concern we
+measured spans at least 8 modules, with error handling touch-
+ing 27 modules and configuration access appearing in 27.
+The overlap between concerns—many files contain checks for
+multiple concerns—further illustrates the tangling problem.
+Table VI maps each V-graph from the goal model to the
+empirically measured scattering in the source code. The table
+reveals two categories of results: concerns with measured
+scattering (confirming the V-graph identification) and concerns
+that are entirelyabsentfrom the implementation despite being
+identified by V-graph analysis.
+The results demonstrate that V-graph analysis identifies both
+implemented but scatteredconcerns andmissingconcerns. Six
+of eight V-graphs correspond to crosscutting concerns that are
+implemented but scattered—confirming that these are genuine
+crosscutting concerns amenable to aspect modularization. No-
+tably, the V-graph connectingExecute TooltoSecuritythrough
+Check AuthorizationandValidate Pathcorrectly identifies
+scattering across 104 files in 23 modules in v4—a growth
+reflecting active security hardening. Significantly, theCostV-
+graph—which was absent in v2—corresponds to 42 scattered
+files in v4, confirming that the framework has begun address-
+ing token-budget tracking but without modular enforcement.
+Two V-graphs still identify concerns withnoimplementation,
+revealing persistent requirements gaps.
+The four novel patterns address a gap: ZEROCLAWcurrently
+hasno modularimplementation of prompt injection defense
+or structured action audit trails; token budget tracking has
+emerged (42 files, 21% in v4) but remains scattered rather than
+aspect-encapsulated. These are precisely the agent-specific
+crosscutting concerns that the V-graph extension (overlapping
+V-graphs) uniquely identifies through multi-dimensional cross-
+cutting analysis.
+Comparison with RE 2004.The original media shop
+case study [4] identified three crosscutting aspects (security,
+usability, portability) from a goal model with 4 actors and
+approximately 20 goals. Our agent case study identifies 11
+crosscutting concerns (Table II) from a goal model with 5
+actors, 8 functional goals, and 7 softgoals, with empirical
+validation across 200 source files and four codebase versions.
+The agent domain exhibits more pervasive crosscutting: the
+most scattered concern (error handling, 81%) affects nearly
+four times more modules than any concern in the media
+shop case study. Furthermore, the four-version longitudinal
+analysis provides evidence that crosscutting concern density
+isstructurally stable—the scattering ratios do not diminish
+as the codebase grows, suggesting that without architectural
+intervention, they compound.
+VI. DISCUSSION
+A. Benefits of Aspect-Oriented Agentic AI
+The pattern language offers several benefits for agent de-
+velopment:
+Modularity.Each NFR is encapsulated in a single aspect,
+eliminating scattering and tangling. In ZEROCLAW, the rate
+limiting concern currently spans 29 files across 8 modules
+with three independent implementations; the RATELIMITER
+pattern consolidates this into a single reusable aspect applied
+declaratively at each join point.
+Consistency.Aspects enforce uniform behavior across all
+join points. The path validation concern in ZEROCLAWuses
+three structurally different implementations (async vs. sync,
+delegated vs. inline,ToolResultvs.anyhow::bail!).
+The TOOLSCOPESANDBOXaspect would enforce a single,
+consistent validation strategy.
+Evolvability.New crosscutting concerns can be added as
+new aspects without modifying the agent core. When a new
+NFR emerges (e.g., GDPR data handling), a new aspect can be
+developed and applied to existing join points without changing
+agent logic.
+Evolutionary resilience.Our four-version evolution analy-
+sis (Table III) provides empirical evidence that scattering ratios
+remain stable as the codebase grows: new modules inherit the
+same ad-hoc patterns as existing ones. Under aspect-oriented
+modularization, this inheritance is broken: new tool implemen-
+tations need only add#[aspect(...)]annotations rather
+than copying scattered rate-limiting, security, or logging code.
+The aspect definition itself is maintained in one location; a bug
+fix or policy change propagates to all join points automatically.
+The rate-limiting PoC demonstrates this concretely: adding
+a new tool to ZEROCLAWcurrently requires copying 12–15
+LOC of rate-limit checks; withASPECT-RS, it requires one
+annotation.
+Composability.Aspects stack declaratively via annotations,
+with a principled ordering (authenticate→scope→guard
+→throttle→budget→protect→observe→audit). The
+composition order is explicit in the source code, unlike the
+implicit ordering of ad-hoc inline checks.
+Traceability.The three-phase methodology creates a trace-
+able chain:i∗ softgoals→V-graph analysis→aspect patterns
+→Rust implementations. This supports requirements trace-
+ability from early-phase goals to deployed code.
+===PAGE 10===
+B. Revisiting RE 2004 After 22 Years
+The V-graph model remains applicable in the agentic AI
+domain, but agent tasks exhibit significantly highermulti-
+dimensional crosscuttingthan the original media shop case
+study (Section III-B). Where “Process Order” might crosscut
+2–3 softgoals, “Call LLM Provider” simultaneously crosscuts
+5+ (security, cost, reliability, observability, safety), creating
+overlapping V-graphs that make systematic aspect discovery
+critical—ad-hoc identification risks missing concerns entirely,
+as evidenced by the absence of prompt injection defense and
+token budget management in ZEROCLAW.
+Beyond aspectdiscovery, the pattern language provides a
+catalog of reusableaspect implementationsthat practitioners
+can directly apply, bridging the gap between requirements
+analysis and software design.
+C. Implications for Practitioners
+The pattern language has immediate practical implications
+for agent system development:
+Proactive NFR identification.Rather than discovering
+crosscutting concerns after they become maintenance problems
+(as in ZEROCLAW, where rate limiting was independently
+implemented three times), the goals-to-aspects methodology
+enables proactive identification during requirements analysis.
+The V-graph analysis systematically revealseverycrosscutting
+concern in the goal model, preventing the common situation
+where concerns like prompt injection defense or token budget
+management are overlooked entirely.
+Architecture decision support.The pattern language pro-
+vides a decision framework for agent architects. Given an
+agent’si ∗ goal model, the pattern catalog maps each NFR
+softgoal to a concrete aspect implementation. The composition
+ordering (Fig. 3) provides guidance on how to layer multiple
+aspects without conflicting interactions.
+Regulatory compliance.As AI governance regulations
+emerge (EU AI Act [18], NIST AI RMF), the ACTIONAUDIT-
+TRAILand TOOLSCOPESANDBOXpatterns provide concrete
+traceability and containment mechanisms, creating auditable
+evidence that NFRs have been systematically addressed.
+Sustainability.The TOKENBUDGETand RESPONSE-
+CACHEpatterns support computational sustainability by con-
+trolling token consumption and reducing unnecessary LLM
+API calls—particularly important given that unconstrained
+agent reasoning loops can consume thousands of tokens per
+turn.
+D. Threats to Validity
+Internal validity.The mapping from goal models to pat-
+terns involves expert judgment; different analysts might iden-
+tify different V-graphs and thus different aspects. We mitigate
+this threat in two ways. First, we ground each pattern in
+empirical source code analysis: every concern we identify
+through V-graph analysis is validated by measuring its scatter-
+ing across modules (Table II). Second, the four novel patterns
+address concerns explicitly identified in the OW ASP LLM
+Top 10 [14] and agent architecture surveys [1], providing
+independent validation of their relevance.
+External validity.We analyze a single agent framework.
+While ZEROCLAWis representative—it supports 22 LLM
+providers, multiple tool types, and 24 communication chan-
+nels, spanning 200 files and 135,651 LOC—generalization
+to other frameworks (particularly those in Python and Type-
+Script) requires further case studies. However, the crosscutting
+concerns we identify (security, observability, cost manage-
+ment, resilience) are architectural in nature and not language-
+specific, suggesting the pattern language is broadly applicable.
+Construct validity.Our scattering metric (file count per
+concern) is based on keyword-pattern matching, which in-
+troduces both false positives and false negatives. To assess
+measurement precision, we manually validated a sample of
+three concerns. Forsecurity/authorization(25 of 104 files sam-
+pled, including 5 files from new modules), manual inspection
+yielded 80% precision—false positives arose from external
+API credential handling (e.g., sending keys to third-party
+APIs) matching theauthpattern. Forrate limiting(14 of 29
+files inspected), precision was 64%—false positives included
+commentsaboutexternal rate limits and temporal scheduling
+described as “throttling.” Forpath validation(19 of 68 files
+sampled), precision was only 32%—thestarts_withpat-
+tern is heavily overloaded in Rust (URL scheme detection,
+token format checking, protocol parsing). Applying these
+precision rates yields adjusted estimates of approximately 83,
+19, and 22 files respectively. The qualitative conclusions—
+that these concerns are scattered across multiple modules and
+exhibit inconsistent implementations—hold under the adjusted
+numbers, but the raw counts in Table II should be interpreted
+as upper bounds. Finer-grained metrics (e.g., co-occurrence
+ofcanonicalizeandstarts_withwithin the same
+function for path validation) would improve precision in
+future work. As additional construct validation, we built a
+compilable proof-of-concept that faithfully reconstructs and
+then refactors the rate-limiting concern using realASPECT-RS
+aspects, confirming the feasibility of the proposed modular-
+ization (Table V).
+VII. RELATEDWORK
+Goal-Oriented RE.Thei ∗ framework [7], [8] and the
+NFR framework [19] provide the theoretical foundation for
+our work. The NFR framework’s treatment of softgoals and
+contribution links is central to our V-graph analysis. Ernst et
+al. [20] extended goal modeling to agile and paraconsistent
+reasoning contexts, demonstrating the adaptability of goal-
+oriented approaches to new development paradigms. Our work
+similarly adapts goal modeling to the agentic AI paradigm.
+Aspect-Oriented RE.Rashid et al. [21] established AORE
+as a discipline, proposing methods for modularizing and
+composing aspectual requirements. Their comprehensive treat-
+ment [22] provides frameworks for identifying, specifying,
+and managing crosscutting concerns at the requirements level.
+Baniassad and Clarke [23] proposed theme-based methods
+for discovering early aspects from requirements documents.
+===PAGE 11===
+Moreira et al. [24] explored multi-dimensional separation of
+concerns in RE. Our work extends these foundations to the
+agentic AI domain with four novel agent-specific patterns and
+empirical validation through source code analysis.
+Goals to Aspects.Yu et al. [4] proposed the goals-to-
+aspects methodology that we extend, demonstrating V-graph
+analysis on a media shop case study. Niu et al. [5] extended
+this methodology across the full software lifecycle, from
+requirements to design to implementation. Sampaio et al. [6]
+developed EA-Miner, a tool for automating aspect-oriented
+requirements identification using NLP techniques. Our con-
+tribution differs in three ways: (1) we apply the methodology
+to the novel domain of agentic AI, (2) we extend the V-graph
+model to capture multi-dimensional crosscutting, and (3) we
+bridge the gap from aspect discovery to aspect implementation
+through a pattern language.
+RE for AI/ML Systems.Belani et al. [25] identified
+unique RE challenges for AI-based complex systems, includ-
+ing data-dependent quality attributes and evolving require-
+ments. Habibullah and Horkoff [26] studied how practitioners
+handle NFRs for ML systems, finding that fairness, explain-
+ability, and safety are poorly addressed. Ahmad et al. [27]
+provided a systematic mapping study covering 126 primary
+studies on RE for AI systems. Our work complements these
+by providing aconcretepattern language for modularizing
+agent NFRs through aspect-oriented techniques, rather than
+only identifying challenges.
+LLM Agent Architectures.Wang et al. [1] and Xi et
+al. [13] surveyed LLM-based autonomous agents, identifying
+planning, memory, and tool use as key capabilities. Yao
+et al. [11] proposed the ReAct framework for synergizing
+reasoning and acting. Shinn et al. [12] introduced Reflexion for
+verbal reinforcement learning. The OW ASP LLM Top 10 [14]
+identifies critical security risks including prompt injection (#1),
+insecure output handling (#2), and excessive agency (#8). Our
+PROMPTGUARD, TOOLSCOPESANDBOX, and ACTIONAU-
+DITTRAILpatterns directly address these top risks through
+aspect-oriented modularization, providing a systematic RE-
+grounded approach to agent security.
+VIII. CONCLUSION
+We have revisited the goals-to-aspects methodology pro-
+posed at RE 2004 and extended it to the agentic AI domain.
+Our three contributions address a timely gap. First, the pattern
+language of 12 reusable patterns—including four novel agent-
+specific patterns for tool-scope sandboxing, prompt injection
+detection, token budget management, and action audit trails—
+provides a principled, immediately actionable approach for
+identifying and modularizing crosscutting concerns in agent
+systems. Second, the V-graph extension to overlapping V-
+graphs captures the multi-dimensional crosscutting that char-
+acterizes agent tasks, where a single task like “Call LLM
+Provider” simultaneously crosscuts security, cost, reliabil-
+ity, and observability. Third, the case study on ZEROCLAW
+(200 files, 135,651 LOC, 29 modules) provides quantitative
+evidence of concern scattering across four codebase versions,
+with every measured concern spanning 8–27 modules.
+The results suggest that aspect-oriented techniques are not
+merely applicable butessentialfor the agentic AI domain,
+where the density of crosscutting concerns exceeds that of
+traditional software. The pattern language bridges the gap
+between early-phase requirements analysis and concrete im-
+plementation, offering practitioners both “what aspects are
+needed” and “how to implement them.”
+Future work includes: (1) multi-agent extensions addressing
+inter-agent crosscutting concerns (e.g., shared token budgets,
+coordinated audit trails); (2) automated pattern recommen-
+dation from goal models, extending EA-Miner [6] to the
+agent domain; (3) multiple case studies across diverse agent
+frameworks (Python, TypeScript, Rust) to validate pattern gen-
+eralizability; and (4) empirical studies measuring the impact
+of aspect-oriented modularization on agent system maintain-
+ability and defect rates.
+Data Availability Statement
+The replication package (pattern language, goal mod-
+els, scattering measurement data, and aspect implemen-
+tations) is available on Zenodo at https://doi.org/10.5281/
+zenodo.18724794. The subject agent framework ZERO-
+CLAWis open-source at https://github.com/zeroclaw-labs/
+zeroclaw; the four analysis snapshots are pinned to commits
+21dc22f(v1, 2026-02-16),d42cb1e(v2, 2026-02-18),
+38e27ff(v3, 2026-02-21), andaa45c30(v4, 2026-02-
+23). Scattering measurements are fully reproducible using the
+aspect-analysis.shscript included in the replication
+package. The AOP frameworkASPECT-RSis available at
+https://crates.io/crates/aspect-core.
+AI Tool Disclosure
+In accordance with IEEE policy, we disclose that AI coding
+assistants were used to support LaTeX formatting. All research
+design, goal modeling, pattern identification, and analysis were
+performed by the authors.
+REFERENCES
+[1] L. Wang, C. Ma, X. Fenget al., “A survey on large language model
+based autonomous agents,”Frontiers of Computer Science, vol. 18, no. 6,
+p. 186345, 2024.
+[2] VentureBeat, “Why do 87% of data science projects
+never make it into production?” https://venturebeat.com/ai/
+why-do-87-of-data-science-projects-never-make-it-into-production/,
+2019.
+[3] G. Kiczales, E. Hilsdale, J. Hugunin, M. Kersten, J. Palm, and W. G.
+Griswold, “An overview of AspectJ,” inEuropean Conference on Object-
+Oriented Programming (ECOOP). Springer, 2001, pp. 327–354.
+[4] Y . Yu, J. C. S. d. P. Leite, and J. Mylopoulos, “From goals to aspects:
+Discovering aspects from requirements goal models,” inProceedings
+of the 12th IEEE International Requirements Engineering Conference
+(RE’04). IEEE, 2004, pp. 38–47.
+[5] N. Niu, Y . Yu, B. Gonz ´alez-Baixauli, N. Ernst, J. C. S. d. P. Leite,
+and J. Mylopoulos, “Aspects across software life cycle: A goal-driven
+approach,” inTransactions on Aspect-Oriented Software Development
+VI. Springer, 2009, pp. 83–110.
+[6] A. Sampaio, N. Loughran, A. Rashid, and P. Rayson, “EA-Miner: A
+tool for automating aspect-oriented requirements identification,” inPro-
+ceedings of the 20th IEEE/ACM International Conference on Automated
+Software Engineering (ASE). ACM, 2005, pp. 352–355.
+===PAGE 12===
+[7] E. S. K. Yu, “Towards modelling and reasoning support for early-phase
+requirements engineering,”Proceedings of the 3rd IEEE International
+Symposium on Requirements Engineering (RE’97), pp. 226–235, 1997.
+[8] F. Dalpiaz, X. Franch, and J. Horkoff, “iStar 2.0 language guide,”arXiv
+preprint arXiv:1605.07767, 2016.
+[9] G. Kiczales, J. Lamping, A. Mendhekar, C. Maeda, C. Lopes, J.-M.
+Loingtier, and J. Irwin, “Aspect-oriented programming,” inEuropean
+Conference on Object-Oriented Programming (ECOOP). Springer,
+1997, pp. 220–242.
+[10] aspect-rs contributors, “aspect-rs: Aspect-oriented programming frame-
+work for Rust,” https://crates.io/crates/aspect-core, 2025.
+[11] S. Yao, J. Zhao, D. Yu, N. Du, I. Shafran, K. Narasimhan, and Y . Cao,
+“ReAct: Synergizing reasoning and acting in language models,” in
+International Conference on Learning Representations (ICLR), 2023.
+[12] N. Shinn, F. Cassano, A. Gopinath, K. Shukla, K. Narasimhan, and
+S. Yao, “Reflexion: Language agents with verbal reinforcement learn-
+ing,” inAdvances in Neural Information Processing Systems (NeurIPS),
+2023.
+[13] Z. Xi, W. Chen, X. Guo, W. He, Y . Ding, B. Honget al., “Rise and
+potential of large language model based agents: A survey,” inarXiv
+preprint arXiv:2309.07864, 2023.
+[14] OW ASP Foundation, “OW ASP top 10 for large
+language model applications,” https://owasp.org/
+www-project-top-10-for-large-language-model-applications/, 2025.
+[15] C. Alexander, S. Ishikawa, and M. Silverstein,A Pattern Language:
+Towns, Buildings, Construction. Oxford University Press, 1977.
+[16] E. Gamma, R. Helm, R. Johnson, and J. Vlissides,Design Patterns:
+Elements of Reusable Object-Oriented Software. Addison-Wesley,
+1995.
+[17] HennyGod, “ZeroClaw: An autonomous AI agent framework in Rust,”
+https://github.com/zeroclaw-labs/zeroclaw, 2025.
+[18] European Parliament, “Regulation (EU) 2024/1689 of the European
+Parliament – Artificial Intelligence Act,” https://eur-lex.europa.eu/eli/
+reg/2024/1689, 2024.
+[19] L. Chung, B. A. Nixon, E. Yu, and J. Mylopoulos,Non-Functional
+Requirements in Software Engineering. Springer, 2000.
+[20] N. A. Ernst, J. Mylopoulos, and Y . Yu, “Agile requirements engineering
+via paraconsistent reasoning,”Information Systems, vol. 37, no. 4, pp.
+351–363, 2012.
+[21] A. Rashid, A. Moreira, and J. Ara ´ujo, “Modularization and composition
+of aspectual requirements,” inProceedings of the 2nd International
+Conference on Aspect-Oriented Software Development (AOSD). ACM,
+2003, pp. 11–20.
+[22] ——,Aspect-Oriented Requirements Engineering. Springer, 2013.
+[23] E. Baniassad and S. Clarke, “Discovering early aspects,”IEEE Software,
+vol. 21, no. 1, pp. 61–70, 2004.
+[24] A. Moreira, A. Rashid, and J. Ara ´ujo, “Multi-dimensional separation of
+concerns in requirements engineering,” inProceedings of the 13th IEEE
+International Conference on Requirements Engineering (RE’05). IEEE,
+2005, pp. 285–296.
+[25] H. Belani, M. Vukovic, and Z. Car, “Requirements engineering chal-
+lenges in building AI-based complex systems,” inIEEE 27th Interna-
+tional Requirements Engineering Conference Workshops (REW). IEEE,
+2019, pp. 252–255.
+[26] K. M. Habibullah and J. Horkoff, “Non-functional requirements for
+machine learning: Understanding current use and challenges among
+practitioners,” inProceedings of the 29th IEEE International Require-
+ments Engineering Conference (RE). IEEE, 2021, pp. 13–23.
+[27] K. Ahmad, S. Abualhaija, C. Arora, M. Bano, and J. Grundy, “Re-
+quirements engineering for artificial intelligence systems: A systematic
+mapping study,” inInformation and Software Technology, vol. 158.
+Elsevier, 2023, p. 107176.
