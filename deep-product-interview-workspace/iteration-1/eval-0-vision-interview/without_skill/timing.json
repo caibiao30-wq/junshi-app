@@ -1,7 +1,0 @@
-{
-  "total_tokens": null,
-  "duration_ms": 197665,
-  "total_duration_seconds": 197.7,
-  "config": "without_skill",
-  "note": "baseline; tokens not reported in notification"
-}
