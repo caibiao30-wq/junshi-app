@@ -1,0 +1,38 @@
+{
+  "version": 1,
+  "entries": {
+    "79a93d4a2f8f50b95f852280616242fee1855dc99a3c75211917f55e72e95fae": {
+      "last_emitted_at_ms": 1789466169601,
+      "message": "Use parallel execution for independent tasks. Use run_in_background for long operations (npm install, builds, tests)."
+    },
+    "445ed27a3872b681d98190bae61ccb84954e1bc4e140df5370be958dee776b3a": {
+      "last_emitted_at_ms": 1789465768272,
+      "message": "Verify changes work after editing. Test functionality before marking complete."
+    },
+    "466399dafa2d20f60587180bad0a07358eb7f2bce724df0ff682f038ad33f5ad": {
+      "last_emitted_at_ms": 1789465545855,
+      "message": "Read multiple files in parallel when possible for faster analysis."
+    },
+    "071ea999a790e24f8e908b6dd10c1b10db44808dc347299fbf06a1d67ec2e37d": {
+      "last_emitted_at_ms": 1789465284568,
+      "message": "Spawning agent: general-purpose (inherit) | Task: 研究team与ralph编排定位 | Active agents: 4"
+    },
+    "fb7247079053eee5f6c4c78b9e1d6629a87393aa1abdcf8196cc27cb58a9ed6c": {
+      "last_emitted_at_ms": 1789465273922,
+      "message": "Spawning agent: general-purpose (inherit) | Task: 研究候选组件名单结构与准入 | Active agents: 3"
+    },
+    "b29c69f2da9dc220d06d705920cae7baa7ebabdc70915f0c4b8139af8aaa7690": {
+      "last_emitted_at_ms": 1789465263820,
+      "message": "Spawning agent: general-purpose (inherit) | Task: 研究共识阶段与角色划分 | Active agents: 2"
+    },
+    "2ae772199ed177b81473a6931026796f2ac519edca3395a20617b32629e8026f": {
+      "last_emitted_at_ms": 1789465218276,
+      "message": "Spawning agent: general-purpose (inherit) | Task: 研究CLAUDE.md分层与范围边界 | Active agents: 1"
+    },
+    "a322598e07852c8337c80a25660cc3396baa277d941b87065ae52adffb16ea1c": {
+      "last_emitted_at_ms": 1789465213683,
+      "message": "Spawning agent: general-purpose (inherit) | Task: 研究前置工作文件六类与交付拆分"
+    }
+  },
+  "updated_at": "2026-09-15T09:56:09.601Z"
+}

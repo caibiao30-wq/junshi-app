@@ -1,0 +1,102 @@
+{
+  "agents": {
+    "omc": { "model": "opus" },
+    "explore": { "model": "haiku" },
+    "analyst": { "model": "opus" },
+    "planner": { "model": "opus" },
+    "architect": { "model": "opus" },
+    "debugger": { "model": "sonnet" },
+    "executor": { "model": "sonnet" },
+    "verifier": { "model": "sonnet" },
+    "securityReviewer": { "model": "sonnet" },
+    "codeReviewer": { "model": "opus" },
+    "testEngineer": { "model": "sonnet" },
+    "designer": { "model": "sonnet" },
+    "writer": { "model": "haiku" },
+    "qaTester": { "model": "sonnet" },
+    "scientist": { "model": "sonnet" },
+    "tracer": { "model": "sonnet" },
+    "gitMaster": { "model": "sonnet" },
+    "codeSimplifier": { "model": "opus" },
+    "critic": { "model": "opus" },
+    "documentSpecialist": { "model": "sonnet" }
+  },
+  "features": {
+    "parallelExecution": true,
+    "lspTools": true,
+    "astTools": true,
+    "continuationEnforcement": true,
+    "autoContextInjection": true
+  },
+  "magicKeywords": {
+    "ultrawork": ["ultrawork", "ulw", "uw"],
+    "search": ["search", "find", "locate"],
+    "analyze": ["analyze", "investigate", "examine"],
+    "ultrathink": ["ultrathink", "think", "reason", "ponder"]
+  },
+  "routing": {
+    "enabled": true,
+    "defaultTier": "MEDIUM",
+    "forceInherit": false,
+    "escalationEnabled": true,
+    "maxEscalations": 2
+  },
+  "permissions": {
+    "allowBash": true,
+    "allowEdit": true,
+    "allowWrite": true,
+    "maxBackgroundTasks": 5
+  },
+  "externalModels": {
+    "defaults": {
+      "codexModel": "gpt-5.3-codex",
+      "geminiModel": "gemini-3.1-pro-preview"
+    },
+    "fallbackPolicy": {
+      "onModelFailure": "provider_chain",
+      "allowCrossProvider": false,
+      "crossProviderOrder": ["codex", "gemini"]
+    }
+  },
+  "delegationRouting": {
+    "enabled": false,
+    "defaultProvider": "claude",
+    "roles": {}
+  },
+  "team": {
+    "ops": {
+      "maxAgents": 20,
+      "defaultAgentType": "claude",
+      "monitorIntervalMs": 30000,
+      "shutdownTimeoutMs": 15000
+    },
+    "roleRouting": {
+      "orchestrator": { "provider": "claude", "model": "inherit" },
+      "planner": { "provider": "claude", "model": "HIGH" },
+      "analyst": { "provider": "claude", "model": "HIGH" },
+      "architect": { "provider": "claude", "model": "HIGH" },
+      "executor": { "provider": "claude", "model": "MEDIUM" },
+      "debugger": { "provider": "claude", "model": "MEDIUM" },
+      "critic": { "provider": "claude", "model": "HIGH" },
+      "code-reviewer": { "provider": "claude", "model": "HIGH" },
+      "security-reviewer": { "provider": "claude", "model": "HIGH" },
+      "test-engineer": { "provider": "claude", "model": "MEDIUM" },
+      "designer": { "provider": "claude", "model": "MEDIUM" },
+      "writer": { "provider": "claude", "model": "LOW" },
+      "code-simplifier": { "provider": "claude", "model": "HIGH" },
+      "explore": { "provider": "claude", "model": "LOW" },
+      "document-specialist": { "provider": "claude", "model": "MEDIUM" }
+    }
+  },
+  "startupCodebaseMap": {
+    "enabled": true,
+    "maxFiles": 200,
+    "maxDepth": 4
+  },
+  "taskSizeDetection": {
+    "enabled": true,
+    "smallWordLimit": 50,
+    "largeWordLimit": 200,
+    "suppressHeavyModesForSmallTasks": true
+  }
+}
